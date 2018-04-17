@@ -31,14 +31,23 @@ import datetime
 import schedule
 import yaml
 
+from timelapser.cameras import CameraDevice
+
 
 logger = logging.getLogger(__file__)
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO)
 
 
-def take_picture():
+def take_picture(config, camera):
+    if not config.should_run_now():
+        return
     logger.info("Taking picture in %s ...", threading.current_thread())
+    camera.set_capture_target(CameraDevice.CAPTURE_TARGET_MEMORY_CARD)
+    picture = camera.take_picture()
+    store_path = os.path.join(config.store_path, os.path.basename(picture))
+    camera.download_picture(picture, store_path, config.keep_on_camera)
+    logger.info("Stored taken picture in %s", store_path)
 
 
 class TimelapseConfig(object):
@@ -73,6 +82,9 @@ class TimelapseConfig(object):
         self.initialize_from_dict(self.DEFAULT_TIMELAPSE_CONFIG)
         # Now override them with explicit values
         self.initialize_from_dict(config_dict)
+        # TODO: move this to a better location
+        if not os.path.isdir(self.store_path):
+            os.makedirs(self.store_path)
 
     def __str__(self):
         return "<TimelapseConfig(name={} week_days={} since_tod={} till_tod={} frequency={} keep_on_camera={} " \
@@ -206,9 +218,8 @@ class Application(object):
         self.cli_options = self.get_argparser().parse_args(options)
         logger.debug("Parsed CLI options: %s", self.cli_options)
         self.scheduler = schedule.Scheduler()
-        self.camera_device_list = list()
+        self.camera_device_list = CameraDevice.get_available_cameras()
         self.timelapse_config_list = TimelapseConfig.parse_configs_from_file(self.cli_options.config)
-        self._scheduled_jobs_list = list()
 
     @staticmethod
     def get_argparser():
@@ -218,28 +229,29 @@ class Application(object):
         return parser
 
     @staticmethod
-    def run_threaded_job(job_func, timelapse_configuration):
+    def run_threaded_job(job_func, timelapse_configuration, camera):
         if timelapse_configuration.should_run_now():
             logger.debug("Timelapse should run now, executing...")
-            job_thread = threading.Thread(target=job_func)
+            job_thread = threading.Thread(target=job_func, args=(timelapse_configuration, camera))
             job_thread.start()
         else:
             logger.debug("Timelapse is configured not to run at this time, skipping.")
 
-    def schedule_timelapse(self, timelapse_config):
-        job = self.scheduler.every(timelapse_config.frequency).seconds.do(
-            Application.run_threaded_job,
-            take_picture,
-            timelapse_config
-        )
+    def schedule_timelapse(self, timelapse_config, camera):
+        # TODO: it can happen that multiple threads access the same USB device at the same time and then it breaks
+        #job = self.scheduler.every(timelapse_config.frequency).seconds.do(Application.run_threaded_job, take_picture, timelapse_config, camera)
+        # TODO try to change scheduler, as even thought the picture should be taken every 5s, it is 8s
+        job = self.scheduler.every(timelapse_config.frequency).seconds.do(take_picture, timelapse_config, camera)
         job.tag(timelapse_config)
+        job.tag(camera)
 
     def run(self):
-        for config in self.timelapse_config_list:
-            self.schedule_timelapse(config)
+        # for now, just take the first config and first camera
+        config = self.timelapse_config_list[0]
+        camera = self.camera_device_list[0]
+        self.schedule_timelapse(config, camera)
 
         while True:
-            self.scheduler.run_all()
             self.scheduler.run_pending()
             time.sleep(1)
 
