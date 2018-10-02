@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2018 Tomas Hozza
@@ -20,4 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-VERSION = '0.0.1'
+import sys
+
+from timelapser.application import main
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

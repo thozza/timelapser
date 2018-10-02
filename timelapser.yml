@@ -1,0 +1,15 @@
+configuration_number_1:
+    week_days:
+        - 'Mon'
+        - 'Tue'
+        - 'Sun'
+    since_tod:
+        hour: 10
+        minute: 33
+        second: 00
+    till_tod:
+        hour: 10
+        minute: 35
+        second: 00
+    frequency: 10
+
