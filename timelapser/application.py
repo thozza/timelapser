@@ -26,10 +26,11 @@ import sys
 import argparse
 import logging
 import threading
-import time
 import datetime
-import schedule
 import yaml
+
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.base import BaseTrigger
 
 from timelapser.cameras import CameraDevice
 
@@ -40,8 +41,6 @@ logger.setLevel(logging.INFO)
 
 
 def take_picture(config, camera):
-    if not config.should_run_now():
-        return
     logger.info("Taking picture in %s ...", threading.current_thread())
     camera.set_capture_target(CameraDevice.CAPTURE_TARGET_MEMORY_CARD)
     picture = camera.take_picture()
@@ -212,12 +211,45 @@ class TimelapseConfig(object):
         return configurations
 
 
+class TimelapseConfigTrigger(BaseTrigger):
+
+    def __init__(self, timelapse_config):
+        self._timelapse_config = timelapse_config
+
+    def get_next_fire_time(self, previous_fire_time, now):
+        """
+        Returns the next datetime to fire on, If no such datetime can be calculated, returns None.
+        """
+        # The job is being scheduled for the first time
+        if previous_fire_time is None:
+            previous_fire_time = datetime.datetime.now()
+
+        delta = datetime.timedelta(seconds=self._timelapse_config.frequency)
+        next_time = previous_fire_time + delta
+
+        # modify the time until it fits the criteria
+        if not self._timelapse_config.should_run_now(next_time):
+            # first get through the day of week
+            while next_time.weekday() not in self._timelapse_config.week_days:
+                next_time = datetime.datetime.combine(next_time.date() + datetime.timedelta(days=1), next_time.timetz())
+
+            # now fix the time
+            # TODO: Verify that this actually works correctly when we passed till_tod and changed the day
+            next_time = datetime.datetime.combine(
+                next_time.date(),
+                self._timelapse_config.since_tod,
+                tzinfo=next_time.tzinfo
+            )
+        logger.debug("Next job scheduled for %s", next_time.strftime("%c"))
+        return next_time
+
+
 class Application(object):
 
     def __init__(self, options):
         self.cli_options = self.get_argparser().parse_args(options)
         logger.debug("Parsed CLI options: %s", self.cli_options)
-        self.scheduler = schedule.Scheduler()
+        self.scheduler = BlockingScheduler()
         self.camera_device_list = CameraDevice.get_available_cameras()
         self.timelapse_config_list = TimelapseConfig.parse_configs_from_file(self.cli_options.config)
 
@@ -239,11 +271,11 @@ class Application(object):
 
     def schedule_timelapse(self, timelapse_config, camera):
         # TODO: it can happen that multiple threads access the same USB device at the same time and then it breaks
-        #job = self.scheduler.every(timelapse_config.frequency).seconds.do(Application.run_threaded_job, take_picture, timelapse_config, camera)
-        # TODO try to change scheduler, as even thought the picture should be taken every 5s, it is 8s
-        job = self.scheduler.every(timelapse_config.frequency).seconds.do(take_picture, timelapse_config, camera)
-        job.tag(timelapse_config)
-        job.tag(camera)
+        job = self.scheduler.add_job(take_picture, TimelapseConfigTrigger(timelapse_config), args=(timelapse_config, camera))
+
+    def stop(self):
+        logger.info("Shutting down the application")
+        self.scheduler.shutdown()
 
     def run(self):
         # for now, just take the first config and first camera
@@ -251,9 +283,7 @@ class Application(object):
         camera = self.camera_device_list[0]
         self.schedule_timelapse(config, camera)
 
-        while True:
-            self.scheduler.run_pending()
-            time.sleep(1)
+        self.scheduler.start()
 
 
 def main(options=None):
@@ -263,6 +293,7 @@ def main(options=None):
     :param options: command line options
     :return: None
     """
+    app = None
     try:
         # Do this as the first thing, so that we don't miss any debug log
         if Application.get_argparser().parse_args(options).verbose:
@@ -272,10 +303,12 @@ def main(options=None):
         app.run()
     except KeyboardInterrupt:
         logger.info("Application interrupted by the user.")
+        if app is not None:
+            app.stop()
         sys.exit(0)
-    except Exception as e:
-        logger.critical("Unexpected error occurred: %s", str(e))
-        sys.exit(1)
+    #except Exception as e:
+    #    logger.critical("Unexpected error occurred: %s", str(e))
+    #    sys.exit(1)
     else:
         sys.exit(0)
 
