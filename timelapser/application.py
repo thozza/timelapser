@@ -75,11 +75,14 @@ class TimelapseConfig(object):
         'store_path': os.path.join(os.getcwd(), 'timelapser_store')
     }
 
-    def __init__(self, config_dict):
+    def __init__(self, config_dict=None):
         # First use default values
         self.initialize_from_dict(self.DEFAULT_TIMELAPSE_CONFIG)
-        # Now override them with explicit values
-        self.initialize_from_dict(config_dict)
+
+        if config_dict is not None:
+            # Now override them with explicit values
+            self.initialize_from_dict(config_dict)
+
         # TODO: move this to a better location
         if not os.path.isdir(self.store_path):
             os.makedirs(self.store_path)
@@ -198,12 +201,29 @@ class TimelapseConfig(object):
         if path is None:
             path = TimelapseConfig.find_timelapser_configuration()
 
-        logger.debug("Using timelapser configuration file '%s'", path)
-        with open(path) as config_file:
-            configuration = yaml.safe_load(config_file)
-            logger.debug("Configuration loaded from YMAL file: %s", str(configuration))
+        # didn't find any configuration file in default locations
+        if path is None:
+            logger.info("Didn't find any configuration file.")
+            parsed_configs = None
+        else:
+            logger.debug("Using timelapser configuration file '%s'", path)
+            with open(path) as config_file:
+                configuration = yaml.safe_load(config_file)
+                logger.debug("Configuration loaded from YMAL file: %s", str(configuration))
 
-        return configuration["timelapse_configuration"]
+            parsed_configs = configuration.get("timelapse_configuration", None)
+
+        configurations = list()
+        if parsed_configs is not None:
+            for config in parsed_configs:
+                configurations.append(TimelapseConfig(config))
+                logger.debug("Parsed Timelapse Config: %s", str(configurations[-1]))
+        else:
+            # no confurations found, go just with default one
+            configurations.append(TimelapseConfig())
+            logger.info("Didn't find any explicit timelapse configuration. Using default values.")
+
+        return configurations
 
 
 class TimelapseConfigTrigger(BaseTrigger):
