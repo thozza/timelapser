@@ -102,3 +102,7 @@ ENV/
 
 # PyCharm files
 .idea/
+
+# local timelapser files
+timelapser.yaml
+timelapser_store/

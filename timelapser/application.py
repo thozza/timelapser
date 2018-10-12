@@ -75,8 +75,7 @@ class TimelapseConfig(object):
         'store_path': os.path.join(os.getcwd(), 'timelapser_store')
     }
 
-    def __init__(self, name, config_dict):
-        self.name = name
+    def __init__(self, config_dict):
         # First use default values
         self.initialize_from_dict(self.DEFAULT_TIMELAPSE_CONFIG)
         # Now override them with explicit values
@@ -86,9 +85,9 @@ class TimelapseConfig(object):
             os.makedirs(self.store_path)
 
     def __str__(self):
-        return "<TimelapseConfig(name={} week_days={} since_tod={} till_tod={} frequency={} keep_on_camera={} " \
+        return "<TimelapseConfig(id={} week_days={} since_tod={} till_tod={} frequency={} keep_on_camera={} " \
                "store_path={})>".format(
-                self.name,
+                id(self),
                 self.week_days,
                 self.since_tod,
                 self.till_tod,
@@ -170,7 +169,7 @@ class TimelapseConfig(object):
 
     @staticmethod
     def find_timelapser_configuration():
-        config_file_name = 'timelapser.yml'
+        config_file_name = 'timelapser.yaml'
         paths = [
             # configuration in CWD
             os.path.join(os.getcwd(), config_file_name),
@@ -204,11 +203,7 @@ class TimelapseConfig(object):
             configuration = yaml.safe_load(config_file)
             logger.debug("Configuration loaded from YMAL file: %s", str(configuration))
 
-        configurations = list()
-        for key, value in configuration.items():
-            configurations.append(TimelapseConfig(key, value))
-            logger.debug("Parsed Timelapse Config: %s", str(configurations[-1]))
-        return configurations
+        return configuration["timelapse_configuration"]
 
 
 class TimelapseConfigTrigger(BaseTrigger):
@@ -257,7 +252,8 @@ class Application(object):
     def get_argparser():
         parser = argparse.ArgumentParser()
         parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Use more verbose output.')
-        parser.add_argument('-c', '--config', action='store', default=None, help='Path to configuration file to use.')
+        parser.add_argument('-c', '--config', action='store', default=None, help='Path to configuration YAML file \
+        to use.')
         return parser
 
     @staticmethod
