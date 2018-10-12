@@ -1,15 +1,38 @@
+# this section contains list of various timelapse configurations for the same camera or multiple cameras
 timelapse_configuration:
+      # 'week_days' specifies on which weekdays shold timelapser take pictures.
+      # default is ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], meaning every day
     - week_days:
         - 'Mon'
         - 'Tue'
         - 'Sun'
+
+      # 'since_tod' specifies time of the day, since which the timelapser should be taking pictures.
+      # default is since 00:00.0
       since_tod:
         hour: 10
         minute: 33
         second: 00
+
+      # 'till_tod' specifies time of day, till which timelapser should be taking pictures.
+      # default is till 23:59.59
       till_tod:
         hour: 10
         minute: 35
         second: 00
-      frequency: 10
 
+      # 'frequency' specifies the frequency in SECONDS how often timelapser takes picture.
+      # default is every 10 seconds.
+      #frequency: 10
+
+      # 'keep_on_camera' specifies whether the taken picture should be kept on the camera SD card.
+      # default is YES
+      #keep_on_camera: yes
+
+      # 'store_path' specifies the location where to store taken pictures
+      # default is the "<CWD>/timelapser_store/" directory
+      #store_path': "/path/to/store/pictures"
+
+      # 'camera_id' specifies a camera for which this configuration applies.
+      # This is by default not set and therefore the configuration applies to all cameras found on the system.
+      #camera_id: "xyz"
