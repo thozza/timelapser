@@ -23,10 +23,27 @@
 
 import os
 import re
+import threading
+
 import gphoto2 as gp
 
 from timelapser.logging import log
 
+
+class ThreadsafeCameraObject(gp.Camera):
+
+    def __init__(self, *args, **kwargs):
+        super(ThreadsafeCameraObject, self).__init__(*args, **kwargs)
+        self._thread_lock = threading.Lock()
+
+    def init(self, Context_context=None):
+        self._thread_lock.acquire()
+        return super(ThreadsafeCameraObject, self).init(Context_context)
+
+    def exit(self, Context_context=None):
+        ret = super(ThreadsafeCameraObject, self).exit(Context_context)
+        self._thread_lock.release()
+        return ret
 
 
 class CameraDevice(object):
@@ -52,7 +69,7 @@ class CameraDevice(object):
         :type camera_addr: str
         :return: gphoto2.Camera
         """
-        camera = gp.Camera()
+        camera = ThreadsafeCameraObject()
         port_info_list = gp.PortInfoList()
         port_info_list.load()
         idx = port_info_list.lookup_path(camera_addr)
