@@ -61,15 +61,6 @@ class Application(object):
         to use.')
         return parser
 
-    @staticmethod
-    def run_threaded_job(job_func, timelapse_configuration, camera):
-        if timelapse_configuration.should_run_now():
-            log.debug("Timelapse should run now, executing...")
-            job_thread = threading.Thread(target=job_func, args=(timelapse_configuration, camera))
-            job_thread.start()
-        else:
-            log.debug("Timelapse is configured not to run at this time, skipping.")
-
     def schedule_timelapse(self, timelapse_config, camera):
         # TODO: it can happen that multiple threads access the same USB device at the same time and then it breaks
         job = self.scheduler.add_job(take_picture, TimelapseConfigTrigger(timelapse_config), args=(timelapse_config, camera))
