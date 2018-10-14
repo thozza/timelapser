@@ -24,5 +24,8 @@ import logging
 
 
 log = logging.getLogger(__file__)
-log.addHandler(logging.StreamHandler())
 log.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(threadName)s - %(filename)s - %(levelname)s - %(message)s')
+sh = logging.StreamHandler()
+sh.setFormatter(formatter)
+log.addHandler(sh)
