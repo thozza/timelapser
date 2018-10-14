@@ -23,11 +23,12 @@
 
 import os
 import sys
+import asyncio
 import argparse
 import logging
 import threading
 
-from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from timelapser.configuration import TimelapseConfig
 from timelapser.scheduler import TimelapseConfigTrigger
@@ -49,9 +50,12 @@ class Application(object):
     def __init__(self, options):
         self.cli_options = self.get_argparser().parse_args(options)
         log.debug("Parsed CLI options: %s", self.cli_options)
-        self.scheduler = BlockingScheduler()
-        self.camera_device_list = CameraDevice.get_available_cameras()
         self.timelapse_config_list = TimelapseConfig.parse_configs_from_file(self.cli_options.config)
+        self.scheduler = AsyncIOScheduler()
+
+    @property
+    def camera_device_list(self):
+        return CameraDevice.get_available_cameras()
 
     @staticmethod
     def get_argparser():
@@ -68,14 +72,15 @@ class Application(object):
     def stop(self):
         log.info("Shutting down the application")
         self.scheduler.shutdown()
+        asyncio.get_event_loop().stop()
 
     def run(self):
         # for now, just take the first config and first camera
         config = self.timelapse_config_list[0]
         camera = self.camera_device_list[0]
-        self.schedule_timelapse(config, camera)
-
         self.scheduler.start()
+        self.schedule_timelapse(config, camera)
+        asyncio.get_event_loop().run_forever()
 
 
 def main(options=None):
