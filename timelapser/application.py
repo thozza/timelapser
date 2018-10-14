@@ -29,20 +29,12 @@ import logging
 import threading
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.jobstores.memory import MemoryJobStore
 
 from timelapser.configuration import TimelapseConfig
 from timelapser.scheduler import TimelapseConfigTrigger
 from timelapser.logging import log
-from timelapser.cameras import CameraDevice
-
-
-def take_picture(config, camera):
-    log.info("Taking picture in %s ...", threading.current_thread())
-    camera.set_capture_target(CameraDevice.CAPTURE_TARGET_MEMORY_CARD)
-    picture = camera.take_picture()
-    store_path = os.path.join(config.store_path, os.path.basename(picture))
-    camera.download_picture(picture, store_path, config.keep_on_camera)
-    log.info("Stored taken picture in %s", store_path)
+from timelapser.cameras import CameraDevice, CameraDeviceError
 
 
 class Application(object):
@@ -52,10 +44,8 @@ class Application(object):
         log.debug("Parsed CLI options: %s", self.cli_options)
         self.timelapse_config_list = TimelapseConfig.parse_configs_from_file(self.cli_options.config)
         self.scheduler = AsyncIOScheduler()
-
-    @property
-    def camera_device_list(self):
-        return CameraDevice.get_available_cameras()
+        self.timelapse_jobs = dict()
+        self.active_cameras_sn = set()
 
     @staticmethod
     def get_argparser():
@@ -65,22 +55,88 @@ class Application(object):
         to use.')
         return parser
 
-    def schedule_timelapse(self, timelapse_config, camera):
-        # TODO: it can happen that multiple threads access the same USB device at the same time and then it breaks
-        job = self.scheduler.add_job(take_picture, TimelapseConfigTrigger(timelapse_config), args=(timelapse_config, camera))
+    def _scheduler_add_job(self, config, camera):
+        try:
+            self.scheduler.add_jobstore(MemoryJobStore(), alias=camera.serial_number)
+        except ValueError as e:
+            raise e
+        self.scheduler.add_job(self.take_picture_job, TimelapseConfigTrigger(config),
+                               args=(config, camera), jobstore=camera.serial_number)
+        self.active_cameras_sn.add(camera.serial_number)
+
+    def _scheduler_remove_jobstore(self, jobstore):
+        log.debug("Removing jobs for camera sn: %s", jobstore)
+        self.scheduler.remove_jobstore(jobstore)
+        self.active_cameras_sn.remove(jobstore)
+
+    def refresh_timelapses_job(self):
+        refresh_period = 5
+        loop = asyncio.get_event_loop()
+
+        available_cameras = CameraDevice.get_available_cameras()
+        if len(available_cameras) == 0:
+            log.debug("There are no available cameras, canceling any running jobs and will refresh in %d seconds",
+                      refresh_period)
+            for removed_camera_sn in self.active_cameras_sn:
+                log.debug("Removing jobs for camera sn: %s", removed_camera_sn)
+                self.scheduler.remove_jobstore(removed_camera_sn)
+            self.active_cameras_sn.clear()
+            self.scheduler.remove_all_jobs()
+            loop.call_later(refresh_period, self.refresh_timelapses_job)
+            return
+
+        active_cameras_map = {c.serial_number: c for c in available_cameras}
+        new_active_cameras_sn = [c.serial_number for c in available_cameras]
+        # remove jobs and job stores for every removed camera
+        removed_cameras_sn = self.active_cameras_sn - set(new_active_cameras_sn)
+        for removed_camera_sn in removed_cameras_sn:
+            self._scheduler_remove_jobstore(removed_camera_sn)
+
+        new_cameras_sn = set(new_active_cameras_sn) - self.active_cameras_sn
+        # Go through all configuration and add timelapse jobs for any new cameras that fit them
+        for config in self.timelapse_config_list:
+            camera_sn = config.camera_id
+            # the config is bound to specific device
+            if camera_sn:
+                if camera_sn in new_cameras_sn:
+                    camera_device = active_cameras_map[camera_sn]
+                    self._scheduler_add_job(config, camera_device)
+                    log.debug("Added timelapse job for camera sn: %s", camera_sn)
+            # configuration is not bound to specific device
+            else:
+                for camera_sn in new_cameras_sn:
+                    camera_device = active_cameras_map[camera_sn]
+                    self._scheduler_add_job(config, camera_device)
+                    log.debug("Added timelapse job for camera sn: %s", camera_sn)
+
+        loop.call_later(refresh_period, self.refresh_timelapses_job)
+
+    def take_picture_job(self, config, camera):
+        log.info("Taking picture in %s ...", threading.current_thread())
+        try:
+            picture = camera.take_picture()
+            store_path = os.path.join(config.store_path, os.path.basename(picture))
+            camera.download_picture(picture, store_path, config.keep_on_camera)
+        except CameraDeviceError as err:
+            # there is some problem with the Camera, remove its whole jobstore
+            log.warning("Error occurred while taking picture on %s(%s)", camera.name, camera.serial_number)
+            self._scheduler_remove_jobstore(camera.serial_number)
+        else:
+            log.info("Stored taken picture in %s", store_path)
 
     def stop(self):
         log.info("Shutting down the application")
-        self.scheduler.shutdown()
-        asyncio.get_event_loop().stop()
+        self.scheduler.remove_all_jobs()
+        self.scheduler.shutdown(wait=False)
+        loop = asyncio.get_event_loop()
+        loop.stop()
+        loop.close()
 
     def run(self):
-        # for now, just take the first config and first camera
-        config = self.timelapse_config_list[0]
-        camera = self.camera_device_list[0]
         self.scheduler.start()
-        self.schedule_timelapse(config, camera)
-        asyncio.get_event_loop().run_forever()
+        loop = asyncio.get_event_loop()
+        loop.call_soon(self.refresh_timelapses_job)
+        loop.run_forever()
 
 
 def main(options=None):
