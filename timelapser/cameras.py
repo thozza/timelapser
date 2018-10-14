@@ -23,13 +23,10 @@
 
 import os
 import re
-import logging
 import gphoto2 as gp
 
+from timelapser.logging import log
 
-logger = logging.getLogger(__file__)
-logger.addHandler(logging.StreamHandler())
-logger.setLevel(logging.DEBUG)
 
 
 class CameraDevice(object):
@@ -71,7 +68,7 @@ class CameraDevice(object):
         """
         cameras = list()
         for camera_name, address in CameraDevice._get_available_cameras_raw():
-            logger.debug("Found available camera '%s' on address '%s'", camera_name, address)
+            log.debug("Found available camera '%s' on address '%s'", camera_name, address)
             cameras.append(CameraDevice(address))
         return cameras
 
@@ -102,9 +99,9 @@ class CameraDevice(object):
         match = re.search(r'Serial Number: (.*)\n', camera_summary)
         if match:
             serial_number = match.group(1)
-            logger.debug('Extracted Serial Number: %s', serial_number)
+            log.debug('Extracted Serial Number: %s', serial_number)
         else:
-            logger.error('No Serial Number found in the summary')
+            log.error('No Serial Number found in the summary')
             serial_number = None
         return serial_number
 
@@ -158,11 +155,11 @@ if __name__ == '__main__':
     cameras = CameraDevice.get_available_cameras()
     cam1 = cameras[0]
     cam1.set_capture_target(CameraDevice.CAPTURE_TARGET_MEMORY_CARD)
-    #logger.info("Camera summary %s", cam1.summary)
-    logger.info("Camera sn %s", cam1.serial_number)
-    #logger.info("list files %s", cam1.list_files())
+    #log.info("Camera summary %s", cam1.summary)
+    log.info("Camera sn %s", cam1.serial_number)
+    #log.info("list files %s", cam1.list_files())
     picture = cam1.take_picture()
-    logger.info("Picture %s", picture)
+    log.info("Picture %s", picture)
     store_path = os.path.join(os.getcwd(), os.path.basename(picture))
     cam1.download_picture(picture, store_path)
-    logger.info("Saved Pic as %s", store_path)
+    log.info("Saved Pic as %s", store_path)
