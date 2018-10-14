@@ -30,6 +30,14 @@ import gphoto2 as gp
 from timelapser.logging import log
 
 
+class CameraDeviceBusy(Exception):
+    pass
+
+
+class CameraDeviceError(Exception):
+    pass
+
+
 class ThreadsafeCameraObject(gp.Camera):
 
     def __init__(self, *args, **kwargs):
@@ -38,7 +46,16 @@ class ThreadsafeCameraObject(gp.Camera):
 
     def init(self, Context_context=None):
         self._thread_lock.acquire()
-        return super(ThreadsafeCameraObject, self).init(Context_context)
+        try:
+            return super(ThreadsafeCameraObject, self).init(Context_context)
+        except gp.GPhoto2Error as err:
+            self._thread_lock.release()
+            #log.debug("Camera object init() error: (%d) %s", err.code, err)
+            if err.code == -53:
+                raise CameraDeviceBusy("Camera Device is busy. Make sure to close all other applications which may be "
+                                       "using it")
+            elif err.code == -2:
+                raise CameraDeviceError("Error happened while trying to initialize the Camera Device.")
 
     def exit(self, Context_context=None):
         ret = super(ThreadsafeCameraObject, self).exit(Context_context)
@@ -51,10 +68,14 @@ class CameraDevice(object):
     CAPTURE_TARGET_INTERNAL_RAM = 'Internal RAM'
     CAPTURE_TARGET_MEMORY_CARD = 'Memory card'
 
-    def __init__(self, device_address):
-        self.address = device_address
-        self._camera_object = self._get_camera_object_by_addr(device_address)
+    camera_device_cache = dict()
 
+    def __init__(self, device_name, device_address):
+        self.address = device_address
+        self.name = device_name
+        self._camera_object = self._get_camera_object_by_addr(device_address)
+        # TODO: Extend methods to work well regardless of the target capture memory
+        self.set_capture_target(CameraDevice.CAPTURE_TARGET_MEMORY_CARD)
         self._camera_object.init()
         self.summary = str(self._camera_object.get_summary())
         self._camera_object.exit()
@@ -70,14 +91,15 @@ class CameraDevice(object):
         :return: gphoto2.Camera
         """
         camera = ThreadsafeCameraObject()
+
         port_info_list = gp.PortInfoList()
         port_info_list.load()
         idx = port_info_list.lookup_path(camera_addr)
         camera.set_port_info(port_info_list[idx])
         return camera
 
-    @staticmethod
-    def get_available_cameras():
+    @classmethod
+    def get_available_cameras(cls):
         """
         Get list of CameraDevice objects representing available cameras
 
@@ -85,8 +107,29 @@ class CameraDevice(object):
         """
         cameras = list()
         for camera_name, address in CameraDevice._get_available_cameras_raw():
-            log.debug("Found available camera '%s' on address '%s'", camera_name, address)
-            cameras.append(CameraDevice(address))
+            #log.debug("Found available device '%s(%s)'", camera_name, address)
+            try:
+                camera = cls.camera_device_cache[address]
+            except KeyError:
+                camera = None
+
+            # while there is a device on the same address, it seems that it is not the same as before
+            if camera is not None and camera.name != camera_name:
+                camera = None
+                cls.camera_device_cache.pop(address)
+
+            # there is no camera on this address in the cache or something changed. Get a new CameraDevice
+            if camera is None:
+                try:
+                    camera = CameraDevice(camera_name, address)
+                except CameraDeviceBusy as err:
+                    log.warn("Not using device '%s(%s)' because: %s", camera_name, address, err)
+                    continue
+                else:
+                    cls.camera_device_cache[address] = camera
+
+            cameras.append(camera)
+
         return cameras
 
     @staticmethod
