@@ -29,10 +29,16 @@ timelapse_configuration:
       # default is YES
       #keep_on_camera: yes
 
-      # 'store_path' specifies the location where to store taken pictures
-      # default is the "<CWD>/timelapser_store/" directory
-      #store_path': "/path/to/store/pictures"
-
       # 'camera_sn' specifies a camera Serial Number for which this configuration applies.
       # This is by default not set and therefore the configuration applies to all cameras found on the system.
       #camera_sn: "xyz"
+
+      # 'datastore' specifies how are pictures stored. You can use 'filesystem' or 'dropbox' datastore or both.
+      # default is the 'filesystem' datastore with 'store_path' set to '<CWD>/timelapser_store/' directory
+      #datastore:
+      #- type: "filesystem"
+      #  store_path: "<path_to_store_pictures_locally>"
+      #
+      #- type: "dropbox"
+      #  store_path: "/timelapser"
+      #  dropbox_token: "<your_secret_token>"

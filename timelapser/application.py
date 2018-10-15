@@ -27,6 +27,8 @@ import asyncio
 import argparse
 import logging
 import threading
+import tempfile
+import shutil
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
@@ -35,6 +37,7 @@ from timelapser.configuration import TimelapseConfig
 from timelapser.scheduler import TimelapseConfigTrigger
 from timelapser.logging import log
 from timelapser.cameras import CameraDevice, CameraDeviceError
+from timelapser.datastore import FilesystemDataStore, DropboxDataStore
 
 
 class Application(object):
@@ -113,16 +116,44 @@ class Application(object):
 
     def take_picture_job(self, config, camera):
         log.info("Taking picture in %s ...", threading.current_thread())
+        tmp_store_dir = tempfile.mkdtemp()
         try:
             picture = camera.take_picture()
-            store_path = os.path.join(config.store_path, os.path.basename(picture))
-            camera.download_picture(picture, store_path, config.keep_on_camera)
+            tmp_store_location = os.path.join(tmp_store_dir, os.path.basename(picture))
+            camera.download_picture(picture, tmp_store_location, config.keep_on_camera)
         except CameraDeviceError as err:
             # there is some problem with the Camera, remove its whole jobstore
             log.warning("Error occurred while taking picture on %s(%s)", camera.name, camera.serial_number)
+            shutil.rmtree(tmp_store_dir)
             self._scheduler_remove_jobstore(camera.serial_number)
         else:
-            log.info("Stored taken picture in %s", store_path)
+            log.info("Temporarily stored taken picture in %s", tmp_store_location)
+            # TODO: think about scheduling this in a new thread, but it may be not necessary as the job itself runs in a dedicated thread
+            # TODO: it may make sense to use camera_sn in the store path if the configuration is not bound to a specific camera, thus there can be multiple cameras storing pictures into the same folder
+            self.store_tmp_file_in_datastore(config, tmp_store_location)
+
+    @staticmethod
+    def store_tmp_file_in_datastore(config, tmp_file):
+        datastores = config.datastore
+
+        for datastore in datastores:
+            datastore_type = datastore[TimelapseConfig.DATASTORE_TYPE]
+
+            if datastore_type == TimelapseConfig.DATASTORE_TYPE_DROPBOX:
+                ds = DropboxDataStore(
+                    datastore[TimelapseConfig.DATASTORE_DROPBOX_TOKEN],
+                    datastore[TimelapseConfig.DATASTORE_STORE_PATH]
+                )
+
+            elif datastore_type == TimelapseConfig.DATASTORE_TYPE_FILESYSTEM:
+                ds = FilesystemDataStore(datastore[TimelapseConfig.DATASTORE_STORE_PATH])
+
+            else:
+                raise NotImplemented("Unexpected datastore type '%s'", datastore_type)
+
+            log.debug("Storing temporary file '%s' using data store '%s'", tmp_file, ds)
+            ds.store_file(tmp_file, False)
+        shutil.rmtree(os.path.dirname(tmp_file))
 
     def stop(self):
         log.info("Shutting down the application")

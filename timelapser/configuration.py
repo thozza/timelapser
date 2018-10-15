@@ -28,6 +28,10 @@ import yaml
 from timelapser.logging import log
 
 
+class TimelapseConfigError(Exception):
+    pass
+
+
 class TimelapseConfig(object):
     WEEK_DAYS = 'week_days'
     SINCE_TOD = 'since_tod'
@@ -35,7 +39,18 @@ class TimelapseConfig(object):
     FREQUENCY = 'frequency'
     CAMERA_SN = 'camera_sn'
     KEEP_ON_CAMERA = 'keep_on_camera'
-    STORE_PATH = 'store_path'
+
+    DATASTORE = 'datastore'
+    DATASTORE_TYPE = 'type'
+    DATASTORE_STORE_PATH = 'store_path'
+    DATASTORE_DROPBOX_TOKEN = 'dropbox_token'
+
+    DATASTORE_TYPE_FILESYSTEM = 'filesystem'
+    DATASTORE_TYPE_DROPBOX = 'dropbox'
+    DATASTORE_TYPES = [
+        DATASTORE_TYPE_FILESYSTEM,
+        DATASTORE_TYPE_DROPBOX
+    ]
 
     DEFAULT_TIMELAPSE_CONFIG = {
         'week_days': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -52,7 +67,12 @@ class TimelapseConfig(object):
         'frequency': 10,
         'camera_sn': '',
         'keep_on_camera': True,
-        'store_path': os.path.join(os.getcwd(), 'timelapser_store')
+        'datastore': [
+            {
+                'type': 'filesystem',
+                'store_path': os.path.join(os.getcwd(), 'timelapser_store'),
+            },
+        ]
     }
 
     def __init__(self, config_dict=None):
@@ -63,20 +83,15 @@ class TimelapseConfig(object):
             # Now override them with explicit values
             self.initialize_from_dict(config_dict)
 
-        # TODO: move this to a better location
-        if not os.path.isdir(self.store_path):
-            os.makedirs(self.store_path)
-
     def __str__(self):
-        return "<TimelapseConfig(id={} week_days={} since_tod={} till_tod={} frequency={} keep_on_camera={} " \
-               "store_path={})>".format(
+        # TODO: Add also datastore info, but make sure to not leak any token to logs
+        return "<TimelapseConfig(id={} week_days={} since_tod={} till_tod={} frequency={} keep_on_camera={})>".format(
                 id(self),
                 self.week_days,
                 self.since_tod,
                 self.till_tod,
                 self.frequency,
                 self.keep_on_camera,
-                self.store_path
                 )
 
     def initialize_from_dict(self, config_dict):
@@ -97,7 +112,7 @@ class TimelapseConfig(object):
         }
 
         for key in [self.WEEK_DAYS, self.SINCE_TOD, self.TILL_TOD, self.FREQUENCY, self.CAMERA_SN,
-                    self.KEEP_ON_CAMERA, self.STORE_PATH]:
+                    self.KEEP_ON_CAMERA, self.DATASTORE]:
             try:
                 # store Time Of Day as datetime.time object for convenience
                 if key in [self.SINCE_TOD, self.TILL_TOD]:
@@ -111,6 +126,35 @@ class TimelapseConfig(object):
                 elif key == self.WEEK_DAYS:
                     weekdays = config_dict[key]
                     value = [weekday_map[k.lower()] for k in weekdays]
+
+                elif key == self.DATASTORE:
+                    datastores = config_dict[key]
+                    # make sure there is always a list of datastores, but allow users to specify just one as a dict
+                    if isinstance(datastores, dict):
+                        datastore = datastores
+                        datastores = list()
+                        datastores.append(datastore)
+                    # validate datastores configuration
+                    for datastore in datastores:
+                        try:
+                            datastore_type = datastore[self.DATASTORE_TYPE]
+                        except KeyError:
+                            raise TimelapseConfigError("datastore must have a 'type' defined")
+                        if datastore_type not in self.DATASTORE_TYPES:
+                            raise TimelapseConfigError("datastore 'type' configuration value must be one of %s",
+                                                       self.DATASTORE_TYPES)
+                        try:
+                            datastore[self.DATASTORE_STORE_PATH]
+                        except KeyError:
+                            raise TimelapseConfigError("datastore must have a 'store_path' defined")
+                        if datastore_type == self.DATASTORE_TYPE_DROPBOX:
+                            try:
+                                datastore[self.DATASTORE_DROPBOX_TOKEN]
+                            except KeyError:
+                                raise TimelapseConfigError("datastore type 'dropbox' must have a 'dropbox_token' "
+                                                           "defined")
+                    value = datastores
+
                 # rest of the values are used as they are
                 else:
                     value = config_dict[key]
@@ -118,6 +162,8 @@ class TimelapseConfig(object):
                 self.__setattr__(key, value)
             except KeyError:
                 continue
+
+        # TODO: check that at least one datastore is specified
 
     def should_run_now(self, time_now=None):
         """
@@ -140,12 +186,12 @@ class TimelapseConfig(object):
 
         # First check day of the week
         if time_now.weekday() not in self.week_days:
-            log.debug("TimelapseConfig(name=%s): not configured to run on this week day %d", self.name, time_now.weekday())
+            log.debug("%s: not configured to run on this week day %d", self, time_now.weekday())
             return False
 
         # Now check the time of day
         if not time_in_range(self.since_tod, self.till_tod, time_now.time()):
-            log.debug("TimelapseConfig(name=%s): not configured to run at this time %s", self.name, time_now.time())
+            log.debug("%s: not configured to run at this time %s", self, time_now.time())
             return False
 
         return True
