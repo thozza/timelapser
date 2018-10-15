@@ -63,8 +63,14 @@ class Application(object):
             self.scheduler.add_jobstore(MemoryJobStore(), alias=camera.serial_number)
         except ValueError as e:
             raise e
-        self.scheduler.add_job(self.take_picture_job, TimelapseConfigTrigger(config),
-                               args=(config, camera), jobstore=camera.serial_number)
+        # TODO: It would probably make sense to make the number of max_instances configurable
+        self.scheduler.add_job(
+            self.take_picture_job,
+            TimelapseConfigTrigger(config),
+            args=(config, camera),
+            jobstore=camera.serial_number,
+            max_instances=2
+        )
         self.active_cameras_sn.add(camera.serial_number)
 
     def _scheduler_remove_jobstore(self, jobstore):
