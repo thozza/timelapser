@@ -43,6 +43,7 @@ class TimelapseConfigTrigger(BaseTrigger):
         delta = datetime.timedelta(seconds=self._timelapse_config.frequency)
         next_time = previous_fire_time + delta
 
+        # FIXME: There is an error, that makes the next_time be scheduled for the same day, but in the past, because the current day fits the configured weekdays but it is past till_tod.
         # modify the time until it fits the criteria
         if not self._timelapse_config.should_run_now(next_time):
             # first get through the day of week
