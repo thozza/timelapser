@@ -33,7 +33,7 @@ class TimelapseConfig(object):
     SINCE_TOD = 'since_tod'
     TILL_TOD = 'till_tod'
     FREQUENCY = 'frequency'
-    CAMERA_ID = 'camera_id'
+    CAMERA_SN = 'camera_sn'
     KEEP_ON_CAMERA = 'keep_on_camera'
     STORE_PATH = 'store_path'
 
@@ -50,6 +50,7 @@ class TimelapseConfig(object):
             'second': 59
         },
         'frequency': 10,
+        'camera_sn': '',
         'keep_on_camera': True,
         'store_path': os.path.join(os.getcwd(), 'timelapser_store')
     }
@@ -95,7 +96,7 @@ class TimelapseConfig(object):
             'sun': 6
         }
 
-        for key in [self.WEEK_DAYS, self.SINCE_TOD, self.TILL_TOD, self.FREQUENCY, self.CAMERA_ID,
+        for key in [self.WEEK_DAYS, self.SINCE_TOD, self.TILL_TOD, self.FREQUENCY, self.CAMERA_SN,
                     self.KEEP_ON_CAMERA, self.STORE_PATH]:
             try:
                 # store Time Of Day as datetime.time object for convenience

@@ -33,6 +33,6 @@ timelapse_configuration:
       # default is the "<CWD>/timelapser_store/" directory
       #store_path': "/path/to/store/pictures"
 
-      # 'camera_id' specifies a camera for which this configuration applies.
+      # 'camera_sn' specifies a camera Serial Number for which this configuration applies.
       # This is by default not set and therefore the configuration applies to all cameras found on the system.
-      #camera_id: "xyz"
+      #camera_sn: "xyz"

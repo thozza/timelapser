@@ -95,7 +95,7 @@ class Application(object):
         new_cameras_sn = set(new_active_cameras_sn) - self.active_cameras_sn
         # Go through all configuration and add timelapse jobs for any new cameras that fit them
         for config in self.timelapse_config_list:
-            camera_sn = config.camera_id
+            camera_sn = config.camera_sn
             # the config is bound to specific device
             if camera_sn:
                 if camera_sn in new_cameras_sn:
