@@ -161,19 +161,25 @@ class Application(object):
             ds.store_file(tmp_file, False)
         shutil.rmtree(os.path.dirname(tmp_file))
 
+    def exception_handler_job(self, loop, context):
+        log.critical("Unhandled exception happened in one of the callbacks, terminating the application!")
+        log.exception(context['exception'])
+        self.stop()
+
     def stop(self):
         log.info("Shutting down the application")
         self.scheduler.remove_all_jobs()
         self.scheduler.shutdown(wait=False)
         loop = asyncio.get_event_loop()
         loop.stop()
-        loop.close()
 
     def run(self):
         self.scheduler.start()
         loop = asyncio.get_event_loop()
+        loop.set_exception_handler(self.exception_handler_job)
         loop.call_soon(self.refresh_timelapses_job)
         loop.run_forever()
+        loop.close()
 
 
 def main(options=None):
