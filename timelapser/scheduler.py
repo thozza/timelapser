@@ -36,22 +36,27 @@ class TimelapseConfigTrigger(BaseTrigger):
         """
         Returns the next datetime to fire on, If no such datetime can be calculated, returns None.
         """
+        # TODO: Take "now" parameter into account when calculating the next run. Especially make sure that "next_time > now"
         # The job is being scheduled for the first time
-        if previous_fire_time is None:
-            previous_fire_time = datetime.datetime.now()
+        if not previous_fire_time:
+            previous_fire_time = now
 
         delta = datetime.timedelta(seconds=self._timelapse_config.frequency)
         next_time = previous_fire_time + delta
 
-        # FIXME: There is an error, that makes the next_time be scheduled for the same day, but in the past, because the current day fits the configured weekdays but it is past till_tod.
         # modify the time until it fits the criteria
         if not self._timelapse_config.should_run_now(next_time):
+            # There was an error, that made the next_time be scheduled for the same day, but in the past, because the current day
+            # fit the configured weekdays but it was past till_tod. This happened when since_tod < till_tod. In this case we need
+            # to jump one day into the future, but before since_tod, so using 00:00.00!
+            if self._timelapse_config.since_tod < self._timelapse_config.till_tod < next_time.time():
+                next_time = datetime.datetime.combine(next_time.date() + datetime.timedelta(days=1), datetime.time())
+
             # first get through the day of week
             while next_time.weekday() not in self._timelapse_config.week_days:
                 next_time = datetime.datetime.combine(next_time.date() + datetime.timedelta(days=1), next_time.timetz())
 
             # now fix the time
-            # TODO: Verify that this actually works correctly when we passed till_tod and changed the day
             next_time = datetime.datetime.combine(
                 next_time.date(),
                 self._timelapse_config.since_tod,
