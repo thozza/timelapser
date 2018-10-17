@@ -33,6 +33,9 @@ class TimelapseConfigError(Exception):
 
 
 class TimelapseConfig(object):
+
+    __slots__ = "week_days", "since_tod", "till_tod", "frequency", "camera_sn", "keep_on_camera", "datastore"
+
     WEEK_DAYS = 'week_days'
     SINCE_TOD = 'since_tod'
     TILL_TOD = 'till_tod'
