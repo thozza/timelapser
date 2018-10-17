@@ -24,7 +24,7 @@ import datetime
 
 from apscheduler.triggers.base import BaseTrigger
 
-from timelapser.logging import log
+from timelapser.log import log
 
 
 class TimelapseConfigTrigger(BaseTrigger):

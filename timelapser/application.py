@@ -35,7 +35,7 @@ from apscheduler.jobstores.memory import MemoryJobStore
 
 from timelapser.configuration import TimelapseConfig
 from timelapser.scheduler import TimelapseConfigTrigger
-from timelapser.logging import log
+from timelapser.log import log
 from timelapser.cameras import CameraDevice, CameraDeviceError
 from timelapser.datastore import FilesystemDataStore, DropboxDataStore
 

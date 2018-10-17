@@ -28,7 +28,7 @@ import dropbox
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError, ApiError
 
-from timelapser.logging import log
+from timelapser.log import log
 
 
 class DataSaveError(Exception):

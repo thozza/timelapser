@@ -25,7 +25,7 @@ import os
 
 import yaml
 
-from timelapser.logging import log
+from timelapser.log import log
 
 
 class TimelapseConfigError(Exception):

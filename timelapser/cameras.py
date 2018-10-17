@@ -27,7 +27,7 @@ import threading
 
 import gphoto2 as gp
 
-from timelapser.logging import log
+from timelapser.log import log
 
 
 class CameraDeviceBusy(Exception):
