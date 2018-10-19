@@ -196,8 +196,12 @@ class CameraDevice(object):
 
     def take_picture(self):
         self._camera_object.init()
-        file_path = self._camera_object.capture(gp.GP_CAPTURE_IMAGE)
-        self._camera_object.exit()
+        try:
+            file_path = self._camera_object.capture(gp.GP_CAPTURE_IMAGE)
+        except gp.GPhoto2Error as err:
+            raise CameraDeviceError("Can not take picture due to error ({}) {}.", err.code, str(err))
+        finally:
+            self._camera_object.exit()
         return os.path.join(file_path.folder, file_path.name)
 
     def download_picture(self, picture_path, store_path, keep_on_device=False):
