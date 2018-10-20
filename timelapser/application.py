@@ -70,7 +70,7 @@ class Application(object):
         self.scheduler.add_job(
             self.take_picture_job,
             TimelapseConfigTrigger(config),
-            args=(config, camera),
+            args=(config, camera, asyncio.get_event_loop()),
             jobstore=camera.serial_number,
             max_instances=self.cli_options.max_instances
         )
@@ -123,7 +123,7 @@ class Application(object):
 
         loop.call_later(refresh_period, self.refresh_timelapses_job)
 
-    def take_picture_job(self, config, camera):
+    def take_picture_job(self, config, camera, eventloop):
         log.info("Taking picture in %s ...", threading.current_thread())
         tmp_store_dir = tempfile.mkdtemp()
         try:
@@ -138,9 +138,8 @@ class Application(object):
             self._scheduler_remove_jobstore(camera.serial_number)
         else:
             log.info("Temporarily stored taken picture in %s", tmp_store_location)
-            # TODO: think about scheduling this in a new thread, but it may be not necessary as the job itself runs in a dedicated thread
             # TODO: it may make sense to use camera_sn in the store path if the configuration is not bound to a specific camera, thus there can be multiple cameras storing pictures into the same folder
-            self.store_tmp_file_in_datastore(config, tmp_store_location)
+            eventloop.run_in_executor(None, self.store_tmp_file_in_datastore, config, tmp_store_location)
 
     @staticmethod
     def store_tmp_file_in_datastore(config, tmp_file):
