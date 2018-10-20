@@ -50,12 +50,14 @@ class ThreadsafeCameraObject(gp.Camera):
             return super(ThreadsafeCameraObject, self).init(Context_context)
         except gp.GPhoto2Error as err:
             self._thread_lock.release()
-            #log.debug("Camera object init() error: (%d) %s", err.code, err)
             if err.code == -53:
                 raise CameraDeviceBusy("Camera Device is busy. Make sure to close all other applications which may be "
                                        "using it")
             elif err.code == -2:
                 raise CameraDeviceError("Error happened while trying to initialize the Camera Device.")
+            else:
+                raise CameraDeviceError("Unknown CameraDevice error happenedwhile initializing the device: ({}) {}.".format(err.code,
+                                                                                                                         str(err)))
 
     def exit(self, Context_context=None):
         ret = super(ThreadsafeCameraObject, self).exit(Context_context)
