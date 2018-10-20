@@ -137,26 +137,30 @@ class TimelapseConfig(object):
                         datastore = datastores
                         datastores = list()
                         datastores.append(datastore)
-                    # validate datastores configuration
-                    for datastore in datastores:
-                        try:
-                            datastore_type = datastore[self.DATASTORE_TYPE]
-                        except KeyError:
-                            raise TimelapseConfigError("datastore must have a 'type' defined")
-                        if datastore_type not in self.DATASTORE_TYPES:
-                            raise TimelapseConfigError("datastore 'type' configuration value must be one of %s",
-                                                       self.DATASTORE_TYPES)
-                        try:
-                            datastore[self.DATASTORE_STORE_PATH]
-                        except KeyError:
-                            raise TimelapseConfigError("datastore must have a 'store_path' defined")
-                        if datastore_type == self.DATASTORE_TYPE_DROPBOX:
+                    # No datastore is defined
+                    if datastores is None:
+                        value = list()
+                    else:
+                        # validate datastores configuration
+                        for datastore in datastores:
                             try:
-                                datastore[self.DATASTORE_DROPBOX_TOKEN]
+                                datastore_type = datastore[self.DATASTORE_TYPE]
                             except KeyError:
-                                raise TimelapseConfigError("datastore type 'dropbox' must have a 'dropbox_token' "
-                                                           "defined")
-                    value = datastores
+                                raise TimelapseConfigError("datastore must have a 'type' defined")
+                            if datastore_type not in self.DATASTORE_TYPES:
+                                raise TimelapseConfigError("datastore 'type' configuration value must be one of %s",
+                                                           self.DATASTORE_TYPES)
+                            try:
+                                datastore[self.DATASTORE_STORE_PATH]
+                            except KeyError:
+                                raise TimelapseConfigError("datastore must have a 'store_path' defined")
+                            if datastore_type == self.DATASTORE_TYPE_DROPBOX:
+                                try:
+                                    datastore[self.DATASTORE_DROPBOX_TOKEN]
+                                except KeyError:
+                                    raise TimelapseConfigError("datastore type 'dropbox' must have a 'dropbox_token' "
+                                                               "defined")
+                        value = datastores
 
                 # rest of the values are used as they are
                 else:
@@ -165,8 +169,6 @@ class TimelapseConfig(object):
                 self.__setattr__(key, value)
             except KeyError:
                 continue
-
-        # TODO: check that at least one datastore is specified
 
     def should_run_now(self, time_now=None):
         """
