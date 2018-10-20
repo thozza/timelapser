@@ -152,7 +152,8 @@ class Application(object):
             if datastore_type == TimelapseConfig.DATASTORE_TYPE_DROPBOX:
                 ds = DropboxDataStore(
                     datastore[TimelapseConfig.DATASTORE_DROPBOX_TOKEN],
-                    datastore[TimelapseConfig.DATASTORE_STORE_PATH]
+                    datastore[TimelapseConfig.DATASTORE_STORE_PATH],
+                    datastore.get(TimelapseConfig.DATASTORE_DROPBOX_TIMEOUT, None)
                 )
 
             elif datastore_type == TimelapseConfig.DATASTORE_TYPE_FILESYSTEM:

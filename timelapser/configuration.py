@@ -47,6 +47,7 @@ class TimelapseConfig(object):
     DATASTORE_TYPE = 'type'
     DATASTORE_STORE_PATH = 'store_path'
     DATASTORE_DROPBOX_TOKEN = 'dropbox_token'
+    DATASTORE_DROPBOX_TIMEOUT = 'dropbox_timeout'
 
     DATASTORE_TYPE_FILESYSTEM = 'filesystem'
     DATASTORE_TYPE_DROPBOX = 'dropbox'

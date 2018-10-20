@@ -70,9 +70,12 @@ class DropboxDataStore(BaseDataStore):
     """
     Class for saving files directly into Dropbox
     """
+    DEFAULT_TIMEOUT = 120
 
-    def __init__(self, token, store_path):
-        self._dropbox = dropbox.Dropbox(token)
+    def __init__(self, token, store_path, timeout=None):
+        if timeout is None:
+            timeout = self.DEFAULT_TIMEOUT
+        self._dropbox = dropbox.Dropbox(token, timeout=timeout)
         self._store_path = store_path
 
         try:

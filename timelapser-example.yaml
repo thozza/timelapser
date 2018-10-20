@@ -43,3 +43,5 @@ timelapse_configuration:
       #- type: "dropbox"
       #  store_path: "/timelapser"
       #  dropbox_token: "<your_secret_token>"
+         # Number of second until uploading a file times out. Increase this if pictures are big and you have slow connection. Default is 120 seconds.
+      #  dropbox_timeout: 120
