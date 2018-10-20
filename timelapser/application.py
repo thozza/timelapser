@@ -37,7 +37,7 @@ from timelapser.configuration import TimelapseConfig
 from timelapser.scheduler import TimelapseConfigTrigger
 from timelapser.log import log
 from timelapser.cameras import CameraDevice, CameraDeviceError
-from timelapser.datastore import FilesystemDataStore, DropboxDataStore
+from timelapser.datastore import FilesystemDataStore, DropboxDataStore, DataSaveError
 
 
 class Application(object):
@@ -162,7 +162,11 @@ class Application(object):
                 raise NotImplemented("Unexpected datastore type '%s'", datastore_type)
 
             log.debug("Storing temporary file '%s' using data store '%s'", tmp_file, ds)
-            ds.store_file(tmp_file, False)
+            try:
+                ds.store_file(tmp_file, False)
+            except DataSaveError as err:
+                log.error("Failed to store file '%s' using datastore '%s' due to error: %s", tmp_file, datastore_type, err)
+                continue
         shutil.rmtree(os.path.dirname(tmp_file))
 
     def exception_handler_job(self, loop, context):

@@ -105,6 +105,9 @@ class DropboxDataStore(BaseDataStore):
                 else:
                     log.error(err)
                 raise DataSaveError("Failed to upload file to Dropbox.")
+            except Exception as err:
+                log.error(err)
+                raise DataSaveError("Failed to upload file to Dropbox due to error: {}".format(err))
 
         if remove_original:
             log.debug("Removing the original file %s", file)
