@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2018 Tomas Hozza
 #
@@ -19,25 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from setuptools import setup
+import sys
 
-from timelapser import VERSION
+from timelapser.timelapserctl import main
 
-
-with open('requirements.txt') as file:
-    requirements = file.read().splitlines()
-
-setup(
-    name='timelapser',
-    packages=['timelapser'],
-    version=VERSION,
-    author='Tomas Hozza',
-    include_package_data=True,
-    install_requires=requirements,
-    entry_points={
-        'console_scripts': [
-            'timelapser = timelapser.application:run_main',
-            'timelapserctl = timelapser.timelapserctl:run_main'
-        ]
-    },
-)
+if __name__ == '__main__':
+    main(sys.argv[1:])
