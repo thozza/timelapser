@@ -47,7 +47,6 @@ class Application(object):
         log.debug("Parsed CLI options: %s", self.cli_options)
         self.timelapse_config_list = TimelapseConfig.parse_configs_from_file(self.cli_options.config)
         self.scheduler = AsyncIOScheduler()
-        self.timelapse_jobs = dict()
         self.active_cameras_sn = set()
 
     @staticmethod
