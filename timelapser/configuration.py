@@ -73,7 +73,7 @@ class TimelapseConfig(object):
         'datastore': [
             {
                 'type': 'filesystem',
-                'store_path': os.path.join(os.getcwd(), 'timelapser_store'),
+                'store_path': os.path.join(os.path.expanduser('~'), 'timelapser_store'),
             },
         ]
     }

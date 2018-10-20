@@ -34,7 +34,8 @@ timelapse_configuration:
       #camera_sn: "xyz"
 
       # 'datastore' specifies how are pictures stored. You can use 'filesystem' or 'dropbox' datastore or both.
-      # default is the 'filesystem' datastore with 'store_path' set to '<CWD>/timelapser_store/' directory
+      # default is the 'filesystem' datastore with 'store_path' set to '<USER_HOME>/timelapser_store/' directory
+      # If you don't want to use any data store and e.g. just keep pictures on the camera, define an empty 'datastore'
       #datastore:
       #- type: "filesystem"
       #  store_path: "<path_to_store_pictures_locally>"
