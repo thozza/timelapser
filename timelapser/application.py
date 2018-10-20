@@ -129,6 +129,7 @@ class Application(object):
         except CameraDeviceError as err:
             # there is some problem with the Camera, remove its whole jobstore
             log.warning("Error occurred while taking picture on %s(%s)", camera.name, camera.serial_number)
+            log.debug(err)
             shutil.rmtree(tmp_store_dir)
             self._scheduler_remove_jobstore(camera.serial_number)
         else:
