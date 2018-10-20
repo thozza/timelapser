@@ -53,8 +53,12 @@ class Application(object):
     def get_argparser():
         parser = argparse.ArgumentParser()
         parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Use more verbose output.')
-        parser.add_argument('-c', '--config', action='store', default=None, help='Path to configuration YAML file \
-        to use.')
+        parser.add_argument('-c', '--config', action='store', default=None, help='Path to configuration YAML file to use.')
+        parser.add_argument('-i', '--max-instances', action='store', type=int, default=2, help='Maximum number of jobs taking picture '
+                                                                                               'from a camera running at the same time. '
+                                                                                               'You may need to increase this in case '
+                                                                                               'that uploading pictures to e.g. Dropbox '
+                                                                                               'takes too long. The default is "2".')
         return parser
 
     def _scheduler_add_job(self, config, camera):
@@ -68,7 +72,7 @@ class Application(object):
             TimelapseConfigTrigger(config),
             args=(config, camera),
             jobstore=camera.serial_number,
-            max_instances=2
+            max_instances=self.cli_options.max_instances
         )
         self.active_cameras_sn.add(camera.serial_number)
 
