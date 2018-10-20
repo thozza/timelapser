@@ -64,6 +64,13 @@ class ThreadsafeCameraObject(gp.Camera):
         self._thread_lock.release()
         return ret
 
+    def __enter__(self):
+        self.init()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.exit()
+
 
 class CameraDevice(object):
 
@@ -78,9 +85,8 @@ class CameraDevice(object):
         self._camera_object = self._get_camera_object_by_addr(device_address)
         # TODO: Extend methods to work well regardless of the target capture memory
         self.set_capture_target(CameraDevice.CAPTURE_TARGET_MEMORY_CARD)
-        self._camera_object.init()
-        self.summary = str(self._camera_object.get_summary())
-        self._camera_object.exit()
+        with self._camera_object as co:
+            self.summary = str(co.get_summary())
         self.serial_number = self.camera_summary_get_serial_number(self.summary)
 
     @staticmethod
@@ -169,52 +175,46 @@ class CameraDevice(object):
 
     def list_files(self, path='/'):
         files = list()
-        self._camera_object.init()
-        folders = [path]
-        for folder in folders:
-            # get additional folders in the current folder
-            for name, value in self._camera_object.folder_list_folders(folder):
-                folders.append(os.path.join(folder, name))
-            # get files
-            for name, value in self._camera_object.folder_list_files(folder):
-                files.append(os.path.join(folder, name))
-        self._camera_object.exit()
+        with self._camera_object as co:
+            folders = [path]
+            for folder in folders:
+                # get additional folders in the current folder
+                for name, value in co.folder_list_folders(folder):
+                    folders.append(os.path.join(folder, name))
+                # get files
+                for name, value in co.folder_list_files(folder):
+                    files.append(os.path.join(folder, name))
         return files
 
     def get_file_info(self, path):
         folder, filename = os.path.split(path)
-        self._camera_object.init()
-        info = self._camera_object.file_get_info(folder, filename)
-        self._camera_object.exit()
+        with self._camera_object as co:
+            info = co.file_get_info(folder, filename)
         return info
 
     def set_capture_target(self, target=CAPTURE_TARGET_INTERNAL_RAM):
-        self._camera_object.init()
-        config = self._camera_object.get_config()
-        capture_target_config = config.get_child_by_name('capturetarget')
-        capture_target_config.set_value(target)
-        self._camera_object.set_config(config)
-        self._camera_object.exit()
+        with self._camera_object as co:
+            config = co.get_config()
+            capture_target_config = config.get_child_by_name('capturetarget')
+            capture_target_config.set_value(target)
+            co.set_config(config)
 
     def take_picture(self):
-        self._camera_object.init()
-        try:
-            file_path = self._camera_object.capture(gp.GP_CAPTURE_IMAGE)
-        except gp.GPhoto2Error as err:
-            raise CameraDeviceError("Can not take picture due to error ({}) {}.", err.code, str(err))
-        finally:
-            self._camera_object.exit()
+        with self._camera_object as co:
+            try:
+                file_path = co.capture(gp.GP_CAPTURE_IMAGE)
+            except gp.GPhoto2Error as err:
+                raise CameraDeviceError("Can not take picture due to error: code:{} msg:{}.".format(err.code, str(err)))
         return os.path.join(file_path.folder, file_path.name)
 
     def download_picture(self, picture_path, store_path, keep_on_device=False):
         folder, filename = os.path.split(picture_path)
-        self._camera_object.init()
-        camera_file = self._camera_object.file_get(folder, filename, gp.GP_FILE_TYPE_NORMAL)
-        gp.check_result(gp.gp_file_save(camera_file, store_path))
-        # delete the file from the device
-        if not keep_on_device:
-            self._camera_object.file_delete(folder, filename)
-        self._camera_object.exit()
+        with self._camera_object as co:
+            camera_file = co.file_get(folder, filename, gp.GP_FILE_TYPE_NORMAL)
+            gp.check_result(gp.gp_file_save(camera_file, store_path))
+            # delete the file from the device
+            if not keep_on_device:
+                co.file_delete(folder, filename)
 
 
 if __name__ == '__main__':
