@@ -115,7 +115,6 @@ class CameraDevice(object):
         """
         cameras = list()
         for camera_name, address in CameraDevice._get_available_cameras_raw():
-            #log.debug("Found available device '%s(%s)'", camera_name, address)
             try:
                 camera = cls.camera_device_cache[address]
             except KeyError:
