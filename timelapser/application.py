@@ -87,8 +87,6 @@ class Application(object):
 
         available_cameras = CameraDevice.get_available_cameras()
         if len(available_cameras) == 0:
-            log.debug("There are no available cameras, canceling any running jobs and will refresh in %d seconds",
-                      refresh_period)
             for removed_camera_sn in self.active_cameras_sn:
                 log.debug("Removing jobs for camera sn: %s", removed_camera_sn)
                 self.scheduler.remove_jobstore(removed_camera_sn)
