@@ -204,7 +204,9 @@ class CameraDevice(object):
                 file_path = co.capture(gp.GP_CAPTURE_IMAGE)
             except gp.GPhoto2Error as err:
                 raise CameraDeviceError("Can not take picture due to error: code:{} msg:{}.".format(err.code, str(err)))
-        return os.path.join(file_path.folder, file_path.name)
+        # TODO: This needs to be fixed to work also with other camreas, as they have different RAW file extensions
+        file_name = file_path.name.replace(".CR2", ".JPG")
+        return os.path.join(file_path.folder, file_name)
 
     def download_picture(self, picture_path, store_path, keep_on_device=False):
         folder, filename = os.path.split(picture_path)
