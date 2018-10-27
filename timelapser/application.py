@@ -37,7 +37,7 @@ from timelapser.configuration import TimelapseConfig
 from timelapser.scheduler import TimelapseConfigTrigger
 from timelapser.log import log
 from timelapser.cameras import CameraDevice, CameraDeviceError
-from timelapser.datastore import FilesystemDataStore, DropboxDataStore, DataSaveError
+from timelapser.datastore import FilesystemDataStore, DropboxDataStore, DataSaveError, DatastoreError
 
 
 class Application(object):
@@ -146,18 +146,20 @@ class Application(object):
         for datastore in datastores:
             datastore_type = datastore[TimelapseConfig.DATASTORE_TYPE]
 
-            if datastore_type == TimelapseConfig.DATASTORE_TYPE_DROPBOX:
-                ds = DropboxDataStore(
-                    datastore[TimelapseConfig.DATASTORE_DROPBOX_TOKEN],
-                    datastore[TimelapseConfig.DATASTORE_STORE_PATH],
-                    datastore.get(TimelapseConfig.DATASTORE_DROPBOX_TIMEOUT, None)
-                )
-
-            elif datastore_type == TimelapseConfig.DATASTORE_TYPE_FILESYSTEM:
-                ds = FilesystemDataStore(datastore[TimelapseConfig.DATASTORE_STORE_PATH])
-
-            else:
-                raise NotImplemented("Unexpected datastore type '%s'", datastore_type)
+            try:
+                if datastore_type == TimelapseConfig.DATASTORE_TYPE_DROPBOX:
+                    ds = DropboxDataStore(
+                        datastore[TimelapseConfig.DATASTORE_DROPBOX_TOKEN],
+                        datastore[TimelapseConfig.DATASTORE_STORE_PATH],
+                        datastore.get(TimelapseConfig.DATASTORE_DROPBOX_TIMEOUT, None)
+                    )
+                elif datastore_type == TimelapseConfig.DATASTORE_TYPE_FILESYSTEM:
+                    ds = FilesystemDataStore(datastore[TimelapseConfig.DATASTORE_STORE_PATH])
+                else:
+                    raise NotImplemented("Unexpected datastore type '%s'", datastore_type)
+            except DatastoreError as err:
+                log.error("Failed to initialize datastore '%s' due to error: %s", datastore_type, err)
+                continue
 
             log.debug("Storing temporary file '%s' using data store '%s'", tmp_file, ds)
             try:

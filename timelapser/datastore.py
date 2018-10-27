@@ -35,6 +35,10 @@ class DataSaveError(Exception):
     pass
 
 
+class DatastoreError(Exception):
+    pass
+
+
 class BaseDataStore:
 
     @abc.abstractmethod
@@ -75,14 +79,16 @@ class DropboxDataStore(BaseDataStore):
     def __init__(self, token, store_path, timeout=None):
         if timeout is None:
             timeout = self.DEFAULT_TIMEOUT
-        self._dropbox = dropbox.Dropbox(token, timeout=timeout)
         self._store_path = store_path
 
         try:
+            self._dropbox = dropbox.Dropbox(token, timeout=timeout)
             user_account = self._dropbox.users_get_current_account()
         except AuthError:
-            raise RuntimeError("Invalid Dropbox access token. Try re-generating access token from the app console on \
+            raise DatastoreError("Invalid Dropbox access token. Try re-generating access token from the app console on \
             the web")
+        except Exception as err:
+            raise DatastoreError("Failed to initialize Dropbox datastore due to error: {}".format(err))
         else:
             log.debug("Successfully logged into Dropbox as user '%s'", user_account.name)
         # TODO: check that the directory in store_path exists and if not, create it!
