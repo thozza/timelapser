@@ -21,11 +21,25 @@
 # SOFTWARE.
 
 import logging
+from timelapser import VERSION
+
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 
-log = logging.getLogger(__file__)
+log = logging.getLogger()
 log.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(threadName)s - %(filename)s - %(levelname)s - %(message)s')
 sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 log.addHandler(sh)
+
+sentry_logging = LoggingIntegration(
+    level=logging.DEBUG,       # Capture info and above as breadcrumbs
+    event_level=logging.ERROR  # Send errors as events
+)
+sentry_sdk.init(
+    dsn="https://b164f890c7f74227843fa8cf7758c4e3@sentry.io/1305412",
+    integrations=[sentry_logging],
+    release=VERSION
+)
