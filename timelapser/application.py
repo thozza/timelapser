@@ -165,7 +165,7 @@ class Application(object):
             try:
                 ds.store_file(tmp_file, False)
             except DataSaveError as err:
-                log.error("Failed to store file '%s' using datastore '%s' due to error: %s", tmp_file, datastore_type, err)
+                log.warning("Failed to store file '%s' using datastore '%s' due to error: %s", tmp_file, datastore_type, err)
                 continue
         shutil.rmtree(os.path.dirname(tmp_file))
 

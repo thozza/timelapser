@@ -108,15 +108,14 @@ class DropboxDataStore(BaseDataStore):
                 self._dropbox.files_upload(f.read(), upload_path, mode=WriteMode('overwrite'))
             except ApiError as err:
                 if err.error.is_path() and err.error.get_path().reason.is_insufficient_space():
-                    log.error("Cannot back up; insufficient space.")
+                    err_msg = "Cannot back up; insufficient space."
                 elif err.user_message_text:
-                    log.error(err.user_message_text)
+                    err_msg = err.user_message_text
                 else:
-                    log.error(err)
-                raise DataSaveError("Failed to upload file to Dropbox.")
+                    err_msg = err
+                raise DataSaveError(err_msg)
             except Exception as err:
-                log.error(err)
-                raise DataSaveError("Failed to upload file to Dropbox due to error: {}".format(err))
+                raise DataSaveError(err)
 
         if remove_original:
             log.debug("Removing the original file %s", file)
