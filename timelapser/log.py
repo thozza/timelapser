@@ -27,7 +27,7 @@ import sentry_sdk
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 
-log = logging.getLogger()
+log = logging.getLogger('timelapser')
 log.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(threadName)s - %(filename)s - %(levelname)s - %(message)s')
 sh = logging.StreamHandler()
