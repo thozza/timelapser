@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import datetime
+import tzlocal
 
 import pytest
 
@@ -117,3 +118,24 @@ class TestTimelapseConfigTrigger:
         assert trigger.get_next_fire_time(datetime.datetime(2018, 10, 16, 11, 0, 0), None) == datetime.datetime(2018, 10, 16, 22, 0, 0)
         # last execution day after allowed window
         assert trigger.get_next_fire_time(datetime.datetime(2018, 10, 19, 12, 0, 0), None) == datetime.datetime(2018, 10, 23, 22, 0, 0)
+
+    @staticmethod
+    def test_get_next_fire_time_tzinfo_preservation(make_timelapse_config):
+        configration = make_timelapse_config(
+            since_tod=datetime.time(10, 30, 0),
+            till_tod=datetime.time(22, 0, 0),
+            weekdays=["Tue", "Wed", "Thu"]
+        )
+        trigger = TimelapseConfigTrigger(configration)
+
+        # last execution was day before the allowed window
+        # the point is that the returned datetime.datetime must have tzinfo, if it had initially
+        assert trigger.get_next_fire_time(datetime.datetime(2018, 10, 15, 7, 0, 0,
+                                                            tzinfo=tzlocal.get_localzone()),
+                                          None) == datetime.datetime(2018, 10, 16, 10, 30, 0,
+                                                                     tzinfo=tzlocal.get_localzone())
+        # last execution is at the end of window
+        assert trigger.get_next_fire_time(datetime.datetime(2018, 10, 16, 22, 0, 0,
+                                                            tzinfo=tzlocal.get_localzone()),
+                                          None) == datetime.datetime(2018, 10, 17, 10, 30, 0,
+                                                                     tzinfo=tzlocal.get_localzone())

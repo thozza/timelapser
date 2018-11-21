@@ -3,3 +3,4 @@ APScheduler >= 3.5.3
 PyYAML >= 3.12
 dropbox
 sentry-sdk >= 0.5.1
+tzlocal

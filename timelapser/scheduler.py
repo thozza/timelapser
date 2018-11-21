@@ -50,7 +50,8 @@ class TimelapseConfigTrigger(BaseTrigger):
             # fit the configured weekdays but it was past till_tod. This happened when since_tod < till_tod. In this case we need
             # to jump one day into the future, but before since_tod, so using 00:00.00!
             if self._timelapse_config.since_tod < self._timelapse_config.till_tod < next_time.time():
-                next_time = datetime.datetime.combine(next_time.date() + datetime.timedelta(days=1), datetime.time())
+                next_time = datetime.datetime.combine(next_time.date() + datetime.timedelta(days=1),
+                                                      datetime.time(tzinfo=next_time.tzinfo))
 
             # first get through the day of week
             while next_time.weekday() not in self._timelapse_config.week_days:
