@@ -156,7 +156,7 @@ class Application(object):
                 elif datastore_type == TimelapseConfig.DATASTORE_TYPE_FILESYSTEM:
                     ds = FilesystemDataStore(datastore[TimelapseConfig.DATASTORE_STORE_PATH])
                 else:
-                    raise NotImplemented("Unexpected datastore type '%s'", datastore_type)
+                    raise NotImplementedError("Unexpected datastore type '%s'", datastore_type)
             except DatastoreError as err:
                 log.error("Failed to initialize datastore '%s' due to error: %s", datastore_type, err)
                 continue
