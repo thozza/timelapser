@@ -1,0 +1,9 @@
+[Unit]
+Description=Application controlling cameras to periodically take pictures for timelapses
+
+[Service]
+ExecStart=/usr/local/bin/timelapser -v
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
